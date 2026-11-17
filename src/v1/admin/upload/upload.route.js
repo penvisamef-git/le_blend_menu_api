@@ -1,6 +1,6 @@
 const multer = require("multer");
-const { uploadBuffer, deleteFile, signUpload, ping } = require("../../../util/storage");
-const { can_manage_menu } = require("../../../util/permission");
+const { uploadBuffer, deleteFile, signUpload, ping, usage } = require("../../../util/storage");
+const { can_manage_menu, can_manage_users } = require("../../../util/permission");
 const baseRoute = "upload";
 
 // Keep files in memory, then stream them to Cloudinary
@@ -39,6 +39,17 @@ const route = (prop) => {
         message: "Storage (R2) not connected",
         error: err.message || err.error?.message,
       });
+    }
+  });
+
+  // ===================================== STORAGE USAGE (admin dashboard card) ================================================
+  // GET /upload/usage[?fresh=1] → { provider, bucket, bytes, objects, by_folder, limit_bytes, checked_at }
+  prop.app.get(`${urlAPI}/usage`, prop.api_auth, prop.jwt_auth, prop.request_user, can_manage_users, async (req, res) => {
+    try {
+      const data = await usage({ fresh: req.query.fresh === "1" });
+      res.json({ success: true, data });
+    } catch (err) {
+      res.status(500).json({ success: false, message: serverError, error: err.message || err.name });
     }
   });
 

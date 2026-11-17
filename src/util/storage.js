@@ -4,7 +4,13 @@
 // Same functions / return shape as the old util/cloudinary.js, so routes and saved data keep working:
 //   uploadBuffer(file, subFolder) → { url, public_id, resource_type, format, width, height, bytes, original_name }
 const crypto = require("crypto");
-const { S3Client, PutObjectCommand, DeleteObjectCommand, HeadBucketCommand } = require("@aws-sdk/client-s3");
+const {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  HeadBucketCommand,
+  ListObjectsV2Command,
+} = require("@aws-sdk/client-s3");
 
 const BUCKET = process.env.R2_BUCKET;
 const PUBLIC_URL = (process.env.R2_PUBLIC_URL || "").replace(/\/+$/, "");
@@ -114,4 +120,40 @@ async function ping() {
   return { status: "ok", bucket: BUCKET, public_url: PUBLIC_URL };
 }
 
-module.exports = { uploadBuffer, deleteFile, signUpload, ping, BASE_FOLDER };
+// Total size of everything in the bucket (real numbers, from R2 itself).
+// Cached for 10 minutes so the dashboard doesn't list the bucket on every visit.
+let usageCache = null;
+async function usage({ fresh = false } = {}) {
+  if (!fresh && usageCache && Date.now() - usageCache.at < 10 * 60 * 1000) return usageCache.data;
+  let bytes = 0;
+  let objects = 0;
+  const byFolder = {};
+  let ContinuationToken;
+  do {
+    const page = await client.send(new ListObjectsV2Command({ Bucket: BUCKET, ContinuationToken, MaxKeys: 1000 }));
+    for (const o of page.Contents || []) {
+      bytes += o.Size || 0;
+      objects++;
+      const folder = o.Key.split("/").slice(0, -1).pop() || "/";
+      byFolder[folder] = byFolder[folder] || { bytes: 0, objects: 0 };
+      byFolder[folder].bytes += o.Size || 0;
+      byFolder[folder].objects++;
+    }
+    ContinuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (ContinuationToken);
+
+  const limitGb = Number(process.env.STORAGE_PLAN_LIMIT_GB) > 0 ? Number(process.env.STORAGE_PLAN_LIMIT_GB) : 10;
+  const data = {
+    provider: "Cloudflare R2",
+    bucket: BUCKET,
+    bytes,
+    objects,
+    by_folder: byFolder,
+    limit_bytes: Math.round(limitGb * 1024 ** 3),
+    checked_at: new Date().toISOString(),
+  };
+  usageCache = { at: Date.now(), data };
+  return data;
+}
+
+module.exports = { uploadBuffer, deleteFile, signUpload, ping, usage, BASE_FOLDER };
