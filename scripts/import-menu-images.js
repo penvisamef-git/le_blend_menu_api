@@ -8,7 +8,7 @@ const path = require("path");
 const mongoose = require("mongoose");
 const connectDB = require("../src/util/db");
 const Item = require("../src/v1/admin/menu/item/model");
-const { uploadBuffer } = require("../src/util/cloudinary");
+const { uploadBuffer } = require("../src/util/storage");
 
 const DIR = path.join(__dirname, "data", "images");
 const DRY = process.argv.includes("--dry");

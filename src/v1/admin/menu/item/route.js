@@ -10,7 +10,7 @@ const { checkValidtion, pick, removeEmpty } = require("../../../../util/helper")
 const { saveSortOrder } = require("../../../../util/sort_order");
 const { can_manage_menu } = require("../../../../util/permission");
 const { image_upload } = require("../../../../util/upload_image");
-const { uploadBuffer, deleteFile } = require("../../../../util/cloudinary");
+const { uploadBuffer, deleteFile } = require("../../../../util/storage");
 const baseRoute = "menu/item";
 const imageFolder = "menu";
 
@@ -130,7 +130,7 @@ const route = (prop) => {
     return { ids };
   }
 
-  // Delete an old Cloudinary image (never blocks the response)
+  // Delete an old image from storage (never blocks the response)
   async function removeImage(image) {
     try {
       const baseFolder = process.env.CLOUDINARY_FOLDER || "le_blend";

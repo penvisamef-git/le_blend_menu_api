@@ -1,5 +1,5 @@
 const multer = require("multer");
-const { uploadBuffer, deleteFile, signUpload, ping } = require("../../../util/cloudinary");
+const { uploadBuffer, deleteFile, signUpload, ping } = require("../../../util/storage");
 const { can_manage_menu } = require("../../../util/permission");
 const baseRoute = "upload";
 
@@ -32,11 +32,11 @@ const route = (prop) => {
   prop.app.get(`${urlAPI}/ping`, ...guard, async (req, res) => {
     try {
       const result = await ping();
-      res.json({ success: true, message: "Cloudinary connected", data: result });
+      res.json({ success: true, message: "Storage (R2) connected", data: result });
     } catch (err) {
       res.status(500).json({
         success: false,
-        message: "Cloudinary not connected",
+        message: "Storage (R2) not connected",
         error: err.message || err.error?.message,
       });
     }
