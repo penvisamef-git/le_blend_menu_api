@@ -32,6 +32,9 @@ const index = (prop) => {
 
   const menuSettingRoute = require("./menu/setting/route");
   menuSettingRoute(prop);
+
+  const menuScanRoute = require("./menu/scan/route");
+  menuScanRoute(prop);
 };
 
 module.exports = index;

@@ -4,6 +4,8 @@ const SectionModel = require("../admin/menu/section/model");
 const ItemModel = require("../admin/menu/item/model");
 const BannerModel = require("../admin/menu/banner/model");
 const BookModel = require("../admin/menu/book/model");
+const ScanModel = require("../admin/menu/scan/model");
+const { dayKey } = require("../admin/menu/scan/route");
 
 // Only these fields leave the server (no notes, no user ids)
 const SETTING_FIELDS =
@@ -79,6 +81,25 @@ const route = (prop) => {
           banners,
         },
       });
+    } catch (err) {
+      res.status(500).json({ success: false, message: serverError, error: err.message });
+    }
+  });
+
+  // ===================================== COUNT A VISIT ================================================
+  // POST /api/public/menu/:token/visit  body: { first_today: true|false, src: "qr" | "link" }
+  // Counts only (no personal data). Wrong / old token → 404, nothing counted.
+  prop.app.post(`${urlAPI}/:token/visit`, async (req, res) => {
+    try {
+      const token = String(req.params.token || "").trim();
+      if (!token || token.length < 8 || !(await SettingModel.exists({ key: "main", public_token: token }))) {
+        return res.status(404).json({ success: false, message: invalidLink });
+      }
+      const inc = { opens: 1 };
+      if (req.body?.first_today === true) inc.visitors = 1;
+      if (req.body?.src === "qr") inc.qr = 1;
+      await ScanModel.updateOne({ day: dayKey() }, { $inc: inc }, { upsert: true });
+      res.status(200).json({ success: true });
     } catch (err) {
       res.status(500).json({ success: false, message: serverError, error: err.message });
     }
